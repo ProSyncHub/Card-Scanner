@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Prosync Vault"
+version = "1.0.0"
+id = "artifacts/prosync-vault"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19090
+
+[services.development]
+run = "pnpm --filter @workspace/prosync-vault run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/prosync-vault", "run", "build" ]
+publicDir = "artifacts/prosync-vault/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19090"
+BASE_PATH = "/"
