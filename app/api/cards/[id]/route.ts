@@ -2,12 +2,17 @@ import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import Card from "@/models/Card";
 
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+// 1. Update the type definition to expect a Promise
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    // 2. Await the params before extracting the ID
+    const resolvedParams = await params;
+    const targetId = resolvedParams.id;
+
     await connectToDatabase();
     
-    // Find the document by its MongoDB _id and destroy it
-    const deletedCard = await Card.findByIdAndDelete(params.id);
+    // 3. Use the extracted targetId
+    const deletedCard = await Card.findByIdAndDelete(targetId);
 
     if (!deletedCard) {
       return NextResponse.json({ error: "Record not found in database." }, { status: 404 });
