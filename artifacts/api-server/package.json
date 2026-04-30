@@ -10,8 +10,6 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@types/cookie": "^1.0.0",
-    "@types/mongoose": "^5.11.97",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
     "cookie": "^1.1.1",
@@ -25,9 +23,11 @@
     "pino-http": "^10"
   },
   "devDependencies": {
+    "@types/cookie": "^1.0.0",
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/mongoose": "^5.11.97",
     "@types/node": "catalog:",
     "esbuild": "^0.27.3",
     "esbuild-plugin-pino": "^2.3.3",
