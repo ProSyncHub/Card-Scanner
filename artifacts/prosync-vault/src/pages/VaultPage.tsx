@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import {
   Loader2, Phone, Mail, Globe, MapPin, Search, Building2,
-  Lock, LogOut, QrCode, Repeat, Download, Camera, Trash2
+  Lock, LogOut, QrCode, Repeat, Download, Camera, Trash2, Languages
 } from "lucide-react";
 
 export default function VaultPage() {
@@ -381,6 +381,12 @@ export default function VaultPage() {
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
+                      {card.isTranslated && card.originalLanguage && (
+                        <div className="absolute bottom-3 left-3 z-10 flex items-center gap-1 bg-[#232f3e] text-[#ff9900] px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest">
+                          <Languages className="w-2.5 h-2.5" />
+                          Translated from {card.originalLanguage}
+                        </div>
+                      )}
                       {renderSideData(card.front)}
                     </div>
 

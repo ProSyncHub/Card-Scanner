@@ -22,8 +22,8 @@ export default function ScanPage() {
   const handleCloudinarySuccess = async (
     frontImageUrl: string,
     backImageUrl?: string,
-    frontQr?: string | null,
-    backQr?: string | null,
+    frontQrCodes?: string[],
+    backQrCodes?: string[],
   ) => {
     setIsProcessingUpload(true);
     setSuccessMessage("");
@@ -31,7 +31,7 @@ export default function ScanPage() {
       const response = await fetch("/api/process-card", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ frontImageUrl, backImageUrl, frontQr, backQr }),
+        body: JSON.stringify({ frontImageUrl, backImageUrl, frontQrCodes, backQrCodes }),
       });
 
       if (response.ok) {

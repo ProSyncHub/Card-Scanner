@@ -3,7 +3,7 @@ import { UploadCloud, Loader2, Plus, Image as ImageIcon } from "lucide-react";
 import jsQR from "jsqr";
 
 interface CardUploaderProps {
-  onUploadSuccess: (frontUrl: string, backUrl?: string, frontQr?: string | null, backQr?: string | null) => void;
+  onUploadSuccess: (frontUrl: string, backUrl?: string, frontQrCodes?: string[], backQrCodes?: string[]) => void;
 }
 
 export default function CardUploader({ onUploadSuccess }: CardUploaderProps) {
@@ -17,21 +17,59 @@ export default function CardUploader({ onUploadSuccess }: CardUploaderProps) {
     if (file) side === "front" ? setFrontFile(file) : setBackFile(file);
   };
 
-  const extractQR = (file: File): Promise<string | null> => {
+  // Scan a specific region of a canvas for a QR code
+  const scanRegion = (
+    ctx: CanvasRenderingContext2D,
+    x: number, y: number, w: number, h: number
+  ): string | null => {
+    if (w < 20 || h < 20) return null;
+    const imageData = ctx.getImageData(x, y, w, h);
+    const code = jsQR(imageData.data, w, h);
+    return code ? code.data : null;
+  };
+
+  // Scan all regions of an image to find every QR code — deduplicated
+  const extractAllQRs = (file: File): Promise<string[]> => {
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = (e) => {
         const img = new Image();
         img.onload = () => {
+          const W = img.width;
+          const H = img.height;
           const canvas = document.createElement("canvas");
+          canvas.width = W;
+          canvas.height = H;
           const ctx = canvas.getContext("2d");
-          if (!ctx) return resolve(null);
-          canvas.width = img.width;
-          canvas.height = img.height;
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          const code = jsQR(imageData.data, imageData.width, imageData.height);
-          resolve(code ? code.data : null);
+          if (!ctx) return resolve([]);
+          ctx.drawImage(img, 0, 0, W, H);
+
+          const found = new Set<string>();
+
+          const tryRegion = (x: number, y: number, w: number, h: number) => {
+            const result = scanRegion(ctx, x, y, w, h);
+            if (result) found.add(result);
+          };
+
+          // Full image
+          tryRegion(0, 0, W, H);
+          // Halves
+          tryRegion(0, 0, W, Math.floor(H / 2));             // top half
+          tryRegion(0, Math.floor(H / 2), W, Math.floor(H / 2)); // bottom half
+          tryRegion(0, 0, Math.floor(W / 2), H);             // left half
+          tryRegion(Math.floor(W / 2), 0, Math.floor(W / 2), H); // right half
+          // Quadrants
+          tryRegion(0, 0, Math.floor(W / 2), Math.floor(H / 2));                                   // top-left
+          tryRegion(Math.floor(W / 2), 0, Math.floor(W / 2), Math.floor(H / 2));                   // top-right
+          tryRegion(0, Math.floor(H / 2), Math.floor(W / 2), Math.floor(H / 2));                   // bottom-left
+          tryRegion(Math.floor(W / 2), Math.floor(H / 2), Math.floor(W / 2), Math.floor(H / 2));   // bottom-right
+          // Thirds (horizontal)
+          const third = Math.floor(H / 3);
+          tryRegion(0, 0, W, third);
+          tryRegion(0, third, W, third);
+          tryRegion(0, third * 2, W, third);
+
+          resolve([...found]);
         };
         img.src = e.target?.result as string;
       };
@@ -59,16 +97,20 @@ export default function CardUploader({ onUploadSuccess }: CardUploaderProps) {
     setIsUploading(true);
 
     try {
-      setStatusText("Scanning QR locally...");
-      const frontQr = await extractQR(frontFile);
-      const backQr = backFile ? await extractQR(backFile) : null;
+      setStatusText("Scanning QR codes...");
+      const [frontQrCodes, backQrCodes] = await Promise.all([
+        extractAllQRs(frontFile),
+        backFile ? extractAllQRs(backFile) : Promise.resolve([]),
+      ]);
 
       setStatusText("Uploading to Cloud Vault...");
-      const frontUrl = await uploadToCloudinary(frontFile);
-      const backUrl = backFile ? await uploadToCloudinary(backFile) : undefined;
+      const [frontUrl, backUrl] = await Promise.all([
+        uploadToCloudinary(frontFile),
+        backFile ? uploadToCloudinary(backFile) : Promise.resolve(undefined),
+      ]);
 
       setStatusText("Finalizing...");
-      onUploadSuccess(frontUrl, backUrl, frontQr, backQr);
+      onUploadSuccess(frontUrl, backUrl, frontQrCodes, backQrCodes);
 
       setFrontFile(null);
       setBackFile(null);

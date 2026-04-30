@@ -24,7 +24,7 @@ router.post("/process-card", async (req, res) => {
   const openai = new OpenAI({ apiKey: process.env["OPENAI_API_KEY"] });
 
   try {
-    const { frontImageUrl, backImageUrl, frontQr, backQr } = req.body;
+    const { frontImageUrl, backImageUrl, frontQrCodes, backQrCodes } = req.body;
 
     if (!frontImageUrl) {
       res.status(400).json({ error: "Front image is required" });
@@ -33,19 +33,31 @@ router.post("/process-card", async (req, res) => {
 
     await connectToDatabase();
 
-    const prompt = `You are a strict data extraction tool. Analyze the provided business card image(s).
-      RULES:
-      1. Extract the data exactly as it appears. Do NOT merge data between the front and back.
-      2. Fix obvious OCR typos.
-      3. Translate non-English data to English.
-      4. If a field is missing, leave it empty ("" or []).
-      
-      Return ONLY a JSON object matching this schema:
-      {
-        "front": { "name": "", "title": "", "company": "", "phone": [], "email": [], "website": "", "address": "", "qrData": [] },
-        "back": { "name": "", "title": "", "company": "", "phone": [], "email": [], "website": "", "address": "", "qrData": [] },
-        "category": "", "isTranslated": false, "originalLanguage": "", "translationNote": ""
-      }`;
+    const prompt = `You are a strict business card data extraction and translation tool.
+
+EXTRACTION RULES:
+1. Extract ALL data from each card side separately. Do NOT merge front and back.
+2. Fix obvious OCR typos (e.g. "l" read as "1" in phone numbers).
+3. Extract ALL phone numbers, emails, and QR code data you can see — put them all in the arrays.
+
+TRANSLATION RULES (MANDATORY):
+4. If ANY text on the card is in a non-English language, you MUST translate ALL fields to English.
+5. When translation occurs, set "isTranslated": true and set "originalLanguage" to the detected language name in English (e.g. "Arabic", "Chinese", "Japanese", "French", "Spanish", etc.).
+6. Set "translationNote" to a brief note like "Translated from Arabic" if translation occurred.
+7. If the card is already in English, set "isTranslated": false and leave "originalLanguage" and "translationNote" empty.
+
+CATEGORY RULE:
+8. Assign a category based on the company/title (e.g. "Technology", "Healthcare", "Finance", "Real Estate", "Legal", "Marketing", "Logistics", etc.).
+
+Return ONLY a valid JSON object with this exact schema:
+{
+  "front": { "name": "", "title": "", "company": "", "phone": [], "email": [], "website": "", "address": "", "qrData": [] },
+  "back": { "name": "", "title": "", "company": "", "phone": [], "email": [], "website": "", "address": "", "qrData": [] },
+  "category": "",
+  "isTranslated": false,
+  "originalLanguage": "",
+  "translationNote": ""
+}`;
 
     const fetchAsBase64 = async (url: string) => {
       const r = await fetch(url);
@@ -77,8 +89,17 @@ router.post("/process-card", async (req, res) => {
 
     const extractedData = JSON.parse(rawJsonText);
 
-    if (frontQr) extractedData.front.qrData = [frontQr];
-    if (backQr) extractedData.back.qrData = [backQr];
+    // Merge locally-scanned QR codes with any AI-detected ones — deduplicated
+    const mergeQr = (aiCodes: string[], localCodes: string[]): string[] => {
+      const all = [...(aiCodes || []), ...(localCodes || [])];
+      return [...new Set(all.filter(Boolean))];
+    };
+
+    const localFrontQrs: string[] = Array.isArray(frontQrCodes) ? frontQrCodes : (frontQrCodes ? [frontQrCodes] : []);
+    const localBackQrs: string[] = Array.isArray(backQrCodes) ? backQrCodes : (backQrCodes ? [backQrCodes] : []);
+
+    extractedData.front.qrData = mergeQr(extractedData.front.qrData, localFrontQrs);
+    extractedData.back.qrData = mergeQr(extractedData.back.qrData, localBackQrs);
 
     const newCard = await Card.create({
       ...extractedData,
