@@ -3,13 +3,16 @@ import OpenAI from "openai";
 import { connectToDatabase } from "../lib/mongodb.js";
 import Card from "../models/Card.js";
 import { parse } from "cookie";
+import { verifyToken } from "./auth.js";
 
 const router = Router();
 
 function isAuthenticated(req: any): boolean {
   const cookieHeader = req.headers.cookie || "";
   const cookies = parse(cookieHeader);
-  return cookies["vault_auth"] === "authenticated";
+  const token = cookies["vault_auth"];
+  if (!token) return false;
+  return verifyToken(token);
 }
 
 router.post("/process-card", async (req, res) => {

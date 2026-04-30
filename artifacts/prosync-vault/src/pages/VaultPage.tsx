@@ -94,19 +94,24 @@ export default function VaultPage() {
     if (cards.length === 0) return alert("No data to export.");
 
     const dataToExport = cards.map((card) => {
-      const phones = (card.phone || []).join(" | ");
-      const emails = (card.email || []).join(" | ");
-      const qrs = (Array.isArray(card.qrData) ? card.qrData : [card.qrData]).filter(Boolean).join(" | ");
+      const front = card.front || {};
+      const back = card.back || {};
+      const allPhones = [...(front.phone || []), ...(back.phone || [])].filter(Boolean);
+      const allEmails = [...(front.email || []), ...(back.email || [])].filter(Boolean);
+      const allQrs = [...(front.qrData || []), ...(back.qrData || [])].filter(Boolean);
       return {
-        Name: card.name || "UNIDENTIFIED",
-        Title: card.title || "",
-        Company: card.company || "",
-        Phone: phones ? String(phones) : "",
-        Email: emails || "",
-        Website: card.website || "",
-        Address: card.address || "",
+        "Name (Front)": front.name || "UNIDENTIFIED",
+        "Title (Front)": front.title || "",
+        "Company (Front)": front.company || "",
+        "Name (Back)": back.name || "",
+        "Title (Back)": back.title || "",
+        "Company (Back)": back.company || "",
+        Phone: allPhones.map(String).join(" | "),
+        Email: allEmails.join(" | "),
+        Website: front.website || back.website || "",
+        Address: front.address || back.address || "",
         Category: card.category || "",
-        "QR Data": qrs || "",
+        "QR Data": allQrs.join(" | "),
         Translated: card.isTranslated ? "Yes" : "No",
       };
     });
@@ -126,9 +131,16 @@ export default function VaultPage() {
   const categories = ["All", ...Array.from(new Set(cards.map((c) => c.category).filter(Boolean)))];
 
   const filteredCards = cards.filter((card) => {
+    const front = card.front || {};
+    const back = card.back || {};
+    const term = searchTerm.toLowerCase();
     const matchesSearch =
-      (card.name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-      (card.company?.toLowerCase() || "").includes(searchTerm.toLowerCase());
+      (front.name?.toLowerCase() || "").includes(term) ||
+      (front.company?.toLowerCase() || "").includes(term) ||
+      (front.title?.toLowerCase() || "").includes(term) ||
+      (back.name?.toLowerCase() || "").includes(term) ||
+      (back.company?.toLowerCase() || "").includes(term) ||
+      (back.title?.toLowerCase() || "").includes(term);
     const matchesCategory = selectedCategory === "All" || card.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
