@@ -28,6 +28,33 @@ router.get("/cards", async (req, res) => {
   }
 });
 
+router.put("/cards/:id", async (req, res) => {
+  if (!isAuthenticated(req)) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const { password, front, back, category } = req.body;
+  if (!password || password !== process.env["INTERNAL_ADMIN_PASSWORD"]) {
+    res.status(403).json({ error: "Invalid password. Edit rejected." });
+    return;
+  }
+  try {
+    await connectToDatabase();
+    const updated = await Card.findByIdAndUpdate(
+      req.params.id,
+      { $set: { front, back, category } },
+      { new: true, runValidators: true }
+    );
+    if (!updated) {
+      res.status(404).json({ error: "Record not found." });
+      return;
+    }
+    res.json(updated);
+  } catch {
+    res.status(500).json({ error: "Failed to update record." });
+  }
+});
+
 router.delete("/cards/:id", async (req, res) => {
   if (!isAuthenticated(req)) {
     res.status(401).json({ error: "Unauthorized" });

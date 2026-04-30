@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import {
   Loader2, Phone, Mail, Globe, MapPin, Search, Building2,
-  Lock, LogOut, QrCode, Repeat, Download, Camera, Trash2, Languages
+  Lock, LogOut, QrCode, Repeat, Download, Camera, Trash2, Languages, Pencil, X, Save
 } from "lucide-react";
 
 export default function VaultPage() {
@@ -21,6 +21,13 @@ export default function VaultPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [flippedCards, setFlippedCards] = useState<{ [key: string]: boolean }>({});
+
+  const [editingCard, setEditingCard] = useState<any | null>(null);
+  const [editTab, setEditTab] = useState<"front" | "back">("front");
+  const [editForm, setEditForm] = useState<any>(null);
+  const [editPassword, setEditPassword] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState("");
 
   useEffect(() => {
     fetchCards();
@@ -87,6 +94,70 @@ export default function VaultPage() {
       }
     } catch {
       alert("System error during deletion protocol.");
+    }
+  };
+
+  const openEditModal = (card: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingCard(card);
+    setEditTab("front");
+    setEditPassword("");
+    setEditError("");
+    setEditForm({
+      front: {
+        name: card.front?.name || "",
+        title: card.front?.title || "",
+        company: card.front?.company || "",
+        phone: (card.front?.phone || []).join("\n"),
+        email: (card.front?.email || []).join("\n"),
+        website: card.front?.website || "",
+        address: card.front?.address || "",
+        qrData: (card.front?.qrData || []).join("\n"),
+      },
+      back: {
+        name: card.back?.name || "",
+        title: card.back?.title || "",
+        company: card.back?.company || "",
+        phone: (card.back?.phone || []).join("\n"),
+        email: (card.back?.email || []).join("\n"),
+        website: card.back?.website || "",
+        address: card.back?.address || "",
+        qrData: (card.back?.qrData || []).join("\n"),
+      },
+      category: card.category || "",
+    });
+  };
+
+  const handleEditSave = async () => {
+    if (!editingCard || !editForm) return;
+    if (!editPassword) { setEditError("Password is required to save changes."); return; }
+    setEditSaving(true);
+    setEditError("");
+    const toArray = (s: string) => s.split("\n").map((x: string) => x.trim()).filter(Boolean);
+    const payload = {
+      password: editPassword,
+      category: editForm.category,
+      front: { ...editForm.front, phone: toArray(editForm.front.phone), email: toArray(editForm.front.email), qrData: toArray(editForm.front.qrData) },
+      back: { ...editForm.back, phone: toArray(editForm.back.phone), email: toArray(editForm.back.email), qrData: toArray(editForm.back.qrData) },
+    };
+    try {
+      const res = await fetch(`/api/cards/${editingCard._id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setCards((prev: any[]) => prev.map((c) => (c._id === updated._id ? updated : c)));
+        setEditingCard(null);
+      } else {
+        const err = await res.json();
+        setEditError(err.error || "Failed to save changes.");
+      }
+    } catch {
+      setEditError("Network error. Please try again.");
+    } finally {
+      setEditSaving(false);
     }
   };
 
@@ -373,14 +444,22 @@ export default function VaultPage() {
                       <div className="absolute top-4 right-4 text-[10px] font-black text-gray-300 uppercase tracking-widest flex items-center gap-1 z-10 bg-white px-1">
                         Front <Repeat className="w-3 h-3 group-hover:text-[#ff9900] transition-colors" />
                       </div>
-                      <button
-                        onClick={(e) => handleDeleteCard(card._id, e)}
-                        disabled={isFlipped}
-                        className={`absolute top-10 right-3 z-20 p-2 bg-white hover:bg-red-50 text-gray-300 hover:text-red-500 rounded-lg transition-all border border-transparent hover:border-red-200 ${isFlipped ? "pointer-events-none opacity-0" : "opacity-100"}`}
-                        title="Permanently Delete Record"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className={`absolute top-10 right-3 z-20 flex flex-col gap-1 ${isFlipped ? "pointer-events-none opacity-0" : "opacity-100"}`}>
+                        <button
+                          onClick={(e) => openEditModal(card, e)}
+                          className="p-2 bg-white hover:bg-blue-50 text-gray-300 hover:text-blue-500 rounded-lg transition-all border border-transparent hover:border-blue-200"
+                          title="Edit Record"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={(e) => handleDeleteCard(card._id, e)}
+                          className="p-2 bg-white hover:bg-red-50 text-gray-300 hover:text-red-500 rounded-lg transition-all border border-transparent hover:border-red-200"
+                          title="Permanently Delete Record"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                       {card.isTranslated && card.originalLanguage && (
                         <div className="absolute bottom-3 left-3 z-10 flex items-center gap-1 bg-[#232f3e] text-[#ff9900] px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest">
                           <Languages className="w-2.5 h-2.5" />
@@ -406,6 +485,120 @@ export default function VaultPage() {
           </div>
         )}
       </div>
+
+      {editingCard && editForm && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setEditingCard(null)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-[#232f3e] rounded-t-xl">
+              <span className="text-white font-black uppercase tracking-widest text-sm flex items-center gap-2">
+                <Pencil className="w-4 h-4 text-[#ff9900]" /> Edit Record
+              </span>
+              <button onClick={() => setEditingCard(null)} className="text-gray-400 hover:text-white transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex border-b border-gray-200">
+              {(["front", "back"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setEditTab(tab)}
+                  className={`flex-1 py-3 text-xs font-black uppercase tracking-widest transition-colors ${editTab === tab ? "bg-[#ff9900] text-[#232f3e]" : "bg-gray-50 text-gray-500 hover:bg-gray-100"}`}
+                >
+                  {tab} Side
+                </button>
+              ))}
+            </div>
+
+            <div className="overflow-y-auto flex-1 px-6 py-5 space-y-4">
+              {(["front", "back"] as const).map((side) =>
+                editTab === side ? (
+                  <div key={side} className="space-y-4">
+                    {[
+                      { label: "Name", key: "name", type: "input" },
+                      { label: "Title / Position", key: "title", type: "input" },
+                      { label: "Company", key: "company", type: "input" },
+                      { label: "Website", key: "website", type: "input" },
+                      { label: "Address", key: "address", type: "input" },
+                    ].map(({ label, key, type }) => (
+                      <div key={key}>
+                        <label className="block text-xs font-black uppercase tracking-wider text-gray-500 mb-1">{label}</label>
+                        {type === "input" ? (
+                          <input
+                            type="text"
+                            value={editForm[side][key]}
+                            onChange={(e) => setEditForm((f: any) => ({ ...f, [side]: { ...f[side], [key]: e.target.value } }))}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-800 focus:ring-2 focus:ring-[#ff9900] outline-none"
+                          />
+                        ) : null}
+                      </div>
+                    ))}
+                    {[
+                      { label: "Phone Numbers (one per line)", key: "phone" },
+                      { label: "Email Addresses (one per line)", key: "email" },
+                      { label: "QR Code Links (one per line)", key: "qrData" },
+                    ].map(({ label, key }) => (
+                      <div key={key}>
+                        <label className="block text-xs font-black uppercase tracking-wider text-gray-500 mb-1">{label}</label>
+                        <textarea
+                          rows={3}
+                          value={editForm[side][key]}
+                          onChange={(e) => setEditForm((f: any) => ({ ...f, [side]: { ...f[side], [key]: e.target.value } }))}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-800 focus:ring-2 focus:ring-[#ff9900] outline-none resize-none"
+                          placeholder={`One entry per line`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : null
+              )}
+
+              <div>
+                <label className="block text-xs font-black uppercase tracking-wider text-gray-500 mb-1">Category</label>
+                <input
+                  type="text"
+                  value={editForm.category}
+                  onChange={(e) => setEditForm((f: any) => ({ ...f, category: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-800 focus:ring-2 focus:ring-[#ff9900] outline-none"
+                  placeholder="e.g. Technology, Finance, Healthcare..."
+                />
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-xl space-y-3">
+              <div>
+                <label className="block text-xs font-black uppercase tracking-wider text-gray-500 mb-1 flex items-center gap-1">
+                  <Lock className="w-3 h-3" /> Confirm Password to Save
+                </label>
+                <input
+                  type="password"
+                  value={editPassword}
+                  onChange={(e) => { setEditPassword(e.target.value); setEditError(""); }}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-800 focus:ring-2 focus:ring-[#ff9900] outline-none"
+                  placeholder="Enter your vault access password"
+                />
+                {editError && <p className="text-red-500 text-xs font-bold mt-1">{editError}</p>}
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setEditingCard(null)}
+                  className="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm font-bold text-gray-600 hover:bg-gray-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleEditSave}
+                  disabled={editSaving}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#232f3e] hover:bg-[#ff9900] text-white hover:text-[#232f3e] rounded-lg text-sm font-black uppercase tracking-widest transition-colors disabled:opacity-50"
+                >
+                  {editSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  {editSaving ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
