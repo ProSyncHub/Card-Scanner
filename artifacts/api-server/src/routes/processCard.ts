@@ -75,8 +75,9 @@ TRANSLATION RULES (MANDATORY):
 7. If the card is already in English, set "isTranslated": false and leave "originalLanguage" and "translationNote" empty.
 
 CATEGORY RULE:
-8. Assign a category based on the company/title (e.g. "Technology", "Healthcare", "Finance", "Real Estate", "Legal", "Marketing", "Logistics", etc.).
-9. If no category is found, assign "Uncategorized".
+8. Assign "category" to exactly one of these values based on the person's industry/company/title:
+   Electronics | Clothing, Shoes & Jewelry | Home & Kitchen | Beauty & Personal Care | Health & Household | Toys & Games | Sports & Outdoors | Automotive | Baby | Pet Supplies | Grocery & Gourmet Food | Office Products | Industrial & Scientific | Tools & Home Improvement | Garden & Outdoor | Arts, Crafts & Sewing | Cell Phones & Accessories | Computers & Accessories | Video Games | Musical Instruments | Movies & TV | Software | Handmade | Amazon Devices & Accessories
+9. If you cannot determine the category from the card, set "category" to "Uncategorized". Do NOT invent a category outside this list.
 
 Return ONLY a valid JSON object with this exact schema:
 {
@@ -130,14 +131,20 @@ Return ONLY a valid JSON object with this exact schema:
     extractedData.front.qrData = mergeQr(extractedData.front.qrData, localFrontQrs);
     extractedData.back.qrData = mergeQr(extractedData.back.qrData, localBackQrs);
 
-    // Category Assignment
-    const companyTitle = extractedData.front.company || extractedData.front.title || "";
-    const category = Object.keys(categoryMapping).find((key) =>
-      companyTitle.toLowerCase().includes(key.toLowerCase())
-    ) || "Uncategorized";  // Default to "Uncategorized" if no match is found
-
-    // Add category to the extracted data
-    extractedData.category = category;
+    // Enforce valid category — fall back to Uncategorized if AI returned something unexpected
+    const VALID_CATEGORIES = [
+      "Electronics", "Clothing, Shoes & Jewelry", "Home & Kitchen",
+      "Beauty & Personal Care", "Health & Household", "Toys & Games",
+      "Sports & Outdoors", "Automotive", "Baby", "Pet Supplies",
+      "Grocery & Gourmet Food", "Office Products", "Industrial & Scientific",
+      "Tools & Home Improvement", "Garden & Outdoor", "Arts, Crafts & Sewing",
+      "Cell Phones & Accessories", "Computers & Accessories", "Video Games",
+      "Musical Instruments", "Movies & TV", "Software", "Handmade",
+      "Amazon Devices & Accessories", "Uncategorized",
+    ];
+    if (!VALID_CATEGORIES.includes(extractedData.category)) {
+      extractedData.category = "Uncategorized";
+    }
 
     const newCard = await Card.create({
       ...extractedData,

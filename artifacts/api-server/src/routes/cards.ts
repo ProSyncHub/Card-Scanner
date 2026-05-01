@@ -6,7 +6,17 @@ import { verifyToken } from "./auth.js";
 
 const router = Router();
 
-// Function to check if the user is authenticated
+const VALID_CATEGORIES = [
+  "Electronics", "Clothing, Shoes & Jewelry", "Home & Kitchen",
+  "Beauty & Personal Care", "Health & Household", "Toys & Games",
+  "Sports & Outdoors", "Automotive", "Baby", "Pet Supplies",
+  "Grocery & Gourmet Food", "Office Products", "Industrial & Scientific",
+  "Tools & Home Improvement", "Garden & Outdoor", "Arts, Crafts & Sewing",
+  "Cell Phones & Accessories", "Computers & Accessories", "Video Games",
+  "Musical Instruments", "Movies & TV", "Software", "Handmade",
+  "Amazon Devices & Accessories", "Uncategorized",
+];
+
 function isAuthenticated(req: any): boolean {
   const cookieHeader = req.headers.cookie || "";
   const cookies = parse(cookieHeader);
@@ -15,41 +25,13 @@ function isAuthenticated(req: any): boolean {
   return verifyToken(token);
 }
 
-// Category Mapping (as previously defined)
-const categoryMapping: { [key: string]: string } = {
-  "Electronics": "Electronics",
-  "Clothing": "Clothing, Shoes & Jewelry",
-  "Home": "Home & Kitchen",
-  "Beauty": "Beauty & Personal Care",
-  "Health": "Health & Household",
-  "Toys": "Toys & Games",
-  "Sports": "Sports & Outdoors",
-  "Automotive": "Automotive",
-  "Baby": "Baby",
-  "Pet Supplies": "Pet Supplies",
-  "Grocery": "Grocery & Gourmet Food",
-  "Office": "Office Products",
-  "Industrial": "Industrial & Scientific",
-  "Tools": "Tools & Home Improvement",
-  "Garden": "Garden & Outdoor",
-  "Arts": "Arts, Crafts & Sewing",
-  "Cell Phones": "Cell Phones & Accessories",
-  "Computers": "Computers & Accessories",
-  "Video Games": "Video Games",
-  "Musical Instruments": "Musical Instruments",
-  "Movies": "Movies & TV",
-  "Software": "Software",
-  "Handmade": "Handmade",
-  "Amazon Devices": "Amazon Devices & Accessories",
-  "Uncategorized": "Uncategorized"
-};
+function validPassword(req: any): boolean {
+  const pw = req.body?.password;
+  return !!pw && pw === process.env["INTERNAL_ADMIN_PASSWORD"];
+}
 
-// Get all cards
 router.get("/cards", async (req, res) => {
-  if (!isAuthenticated(req)) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
+  if (!isAuthenticated(req)) { res.status(401).json({ error: "Unauthorized" }); return; }
   try {
     await connectToDatabase();
     const cards = await Card.find({}).sort({ createdAt: -1 });
@@ -59,92 +41,49 @@ router.get("/cards", async (req, res) => {
   }
 });
 
-// Update a specific card by ID
 router.put("/cards/:id", async (req, res) => {
-  if (!isAuthenticated(req)) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-  const { password, front, back, category } = req.body;
-  if (!password || password !== process.env["INTERNAL_ADMIN_PASSWORD"]) {
-    res.status(403).json({ error: "Invalid password. Edit rejected." });
-    return;
-  }
-
-  // Ensure the category is valid
-  const categoryName = categoryMapping[category] || "Uncategorized";
-
+  if (!isAuthenticated(req)) { res.status(401).json({ error: "Unauthorized" }); return; }
+  if (!validPassword(req)) { res.status(403).json({ error: "Invalid password. Edit rejected." }); return; }
+  const { front, back, category } = req.body;
+  const safeCategory = VALID_CATEGORIES.includes(category) ? category : "Uncategorized";
   try {
     await connectToDatabase();
     const updated = await Card.findByIdAndUpdate(
       req.params.id,
-      { $set: { front, back, category: categoryName } },
+      { $set: { front, back, category: safeCategory } },
       { new: true, runValidators: true }
     );
-    if (!updated) {
-      res.status(404).json({ error: "Record not found." });
-      return;
-    }
+    if (!updated) { res.status(404).json({ error: "Record not found." }); return; }
     res.json(updated);
   } catch {
     res.status(500).json({ error: "Failed to update record." });
   }
 });
 
-// Delete a specific card by ID
-router.delete("/cards/:id", async (req, res) => {
-  if (!isAuthenticated(req)) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-
-  const { password } = req.body;
-  if (!password || password !== process.env["INTERNAL_ADMIN_PASSWORD"]) {
-    res.status(403).json({ error: "Invalid password. Delete rejected." });
-    return;
-  }
-
+router.delete("/cards/bulk", async (req, res) => {
+  if (!isAuthenticated(req)) { res.status(401).json({ error: "Unauthorized" }); return; }
+  if (!validPassword(req)) { res.status(403).json({ error: "Invalid password. Deletion rejected." }); return; }
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) { res.status(400).json({ error: "No record IDs provided." }); return; }
   try {
     await connectToDatabase();
-    const deleted = await Card.findByIdAndDelete(req.params.id);
-    if (!deleted) {
-      res.status(404).json({ error: "Record not found in database." });
-      return;
-    }
+    await Card.deleteMany({ _id: { $in: ids } });
     res.json({ success: true });
   } catch {
-    res.status(500).json({ error: "Failed to terminate record." });
+    res.status(500).json({ error: "Failed to delete records." });
   }
 });
 
-// Bulk delete route with password authentication
-router.delete("/cards", async (req, res) => {
-  if (!isAuthenticated(req)) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-
-  const { password, ids } = req.body;
-  if (!password || password !== process.env["INTERNAL_ADMIN_PASSWORD"]) {
-    res.status(403).json({ error: "Invalid password. Delete rejected." });
-    return;
-  }
-
-  if (!Array.isArray(ids) || ids.length === 0) {
-    res.status(400).json({ error: "No card IDs provided." });
-    return;
-  }
-
+router.delete("/cards/:id", async (req, res) => {
+  if (!isAuthenticated(req)) { res.status(401).json({ error: "Unauthorized" }); return; }
+  if (!validPassword(req)) { res.status(403).json({ error: "Invalid password. Deletion rejected." }); return; }
   try {
     await connectToDatabase();
-    const deleted = await Card.deleteMany({ _id: { $in: ids } });
-    if (deleted.deletedCount === 0) {
-      res.status(404).json({ error: "No records found to delete." });
-      return;
-    }
-    res.json({ success: true, deletedCount: deleted.deletedCount });
+    const deleted = await Card.findByIdAndDelete(req.params.id);
+    if (!deleted) { res.status(404).json({ error: "Record not found." }); return; }
+    res.json({ success: true });
   } catch {
-    res.status(500).json({ error: "Failed to delete records." });
+    res.status(500).json({ error: "Failed to delete record." });
   }
 });
 
