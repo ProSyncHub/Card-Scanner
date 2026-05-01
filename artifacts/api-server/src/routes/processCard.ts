@@ -15,6 +15,34 @@ function isAuthenticated(req: any): boolean {
   return verifyToken(token);
 }
 
+// Define category mapping
+const categoryMapping: { [key: string]: string } = {
+  "Electronics": "Electronics",
+  "Clothing": "Clothing, Shoes & Jewelry",
+  "Home": "Home & Kitchen",
+  "Beauty": "Beauty & Personal Care",
+  "Health": "Health & Household",
+  "Toys": "Toys & Games",
+  "Sports": "Sports & Outdoors",
+  "Automotive": "Automotive",
+  "Baby": "Baby",
+  "Pet Supplies": "Pet Supplies",
+  "Grocery": "Grocery & Gourmet Food",
+  "Office": "Office Products",
+  "Industrial": "Industrial & Scientific",
+  "Tools": "Tools & Home Improvement",
+  "Garden": "Garden & Outdoor",
+  "Arts": "Arts, Crafts & Sewing",
+  "Cell Phones": "Cell Phones & Accessories",
+  "Computers": "Computers & Accessories",
+  "Video Games": "Video Games",
+  "Musical Instruments": "Musical Instruments",
+  "Movies": "Movies & TV",
+  "Software": "Software",
+  "Handmade": "Handmade",
+  "Amazon Devices": "Amazon Devices & Accessories",
+};
+
 router.post("/process-card", async (req, res) => {
   if (!isAuthenticated(req)) {
     res.status(401).json({ error: "Unauthorized" });
@@ -48,6 +76,7 @@ TRANSLATION RULES (MANDATORY):
 
 CATEGORY RULE:
 8. Assign a category based on the company/title (e.g. "Technology", "Healthcare", "Finance", "Real Estate", "Legal", "Marketing", "Logistics", etc.).
+9. If no category is found, assign "Uncategorized".
 
 Return ONLY a valid JSON object with this exact schema:
 {
@@ -100,6 +129,15 @@ Return ONLY a valid JSON object with this exact schema:
 
     extractedData.front.qrData = mergeQr(extractedData.front.qrData, localFrontQrs);
     extractedData.back.qrData = mergeQr(extractedData.back.qrData, localBackQrs);
+
+    // Category Assignment
+    const companyTitle = extractedData.front.company || extractedData.front.title || "";
+    const category = Object.keys(categoryMapping).find((key) =>
+      companyTitle.toLowerCase().includes(key.toLowerCase())
+    ) || "Uncategorized";  // Default to "Uncategorized" if no match is found
+
+    // Add category to the extracted data
+    extractedData.category = category;
 
     const newCard = await Card.create({
       ...extractedData,

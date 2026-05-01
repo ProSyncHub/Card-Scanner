@@ -29,6 +29,35 @@ export default function VaultPage() {
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState("");
 
+  // Define the valid categories
+  const validCategories = [
+    "Electronics",
+    "Clothing, Shoes & Jewelry",
+    "Home & Kitchen",
+    "Beauty & Personal Care",
+    "Health & Household",
+    "Toys & Games",
+    "Sports & Outdoors",
+    "Automotive",
+    "Baby",
+    "Pet Supplies",
+    "Grocery & Gourmet Food",
+    "Office Products",
+    "Industrial & Scientific",
+    "Tools & Home Improvement",
+    "Garden & Outdoor",
+    "Arts, Crafts & Sewing",
+    "Cell Phones & Accessories",
+    "Computers & Accessories",
+    "Video Games",
+    "Musical Instruments",
+    "Movies & TV",
+    "Software",
+    "Handmade",
+    "Amazon Devices & Accessories",
+    "Uncategorized", // Default category
+  ];
+
   useEffect(() => {
     fetchCards();
   }, []);
@@ -124,7 +153,7 @@ export default function VaultPage() {
         address: card.back?.address || "",
         qrData: (card.back?.qrData || []).join("\n"),
       },
-      category: card.category || "",
+      category: card.category || "Uncategorized", // Default to "Uncategorized"
     });
   };
 
@@ -136,7 +165,7 @@ export default function VaultPage() {
     const toArray = (s: string) => s.split("\n").map((x: string) => x.trim()).filter(Boolean);
     const payload = {
       password: editPassword,
-      category: editForm.category,
+      category: validCategories.includes(editForm.category) ? editForm.category : "Uncategorized", // Enforce valid category
       front: { ...editForm.front, phone: toArray(editForm.front.phone), email: toArray(editForm.front.email), qrData: toArray(editForm.front.qrData) },
       back: { ...editForm.back, phone: toArray(editForm.back.phone), email: toArray(editForm.back.email), qrData: toArray(editForm.back.qrData) },
     };
@@ -181,7 +210,7 @@ export default function VaultPage() {
         Email: allEmails.join(" | "),
         Website: front.website || back.website || "",
         Address: front.address || back.address || "",
-        Category: card.category || "",
+        Category: card.category || "Uncategorized",
         "QR Data": allQrs.join(" | "),
         Translated: card.isTranslated ? "Yes" : "No",
       };
@@ -485,120 +514,6 @@ export default function VaultPage() {
           </div>
         )}
       </div>
-
-      {editingCard && editForm && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setEditingCard(null)}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-[#232f3e] rounded-t-xl">
-              <span className="text-white font-black uppercase tracking-widest text-sm flex items-center gap-2">
-                <Pencil className="w-4 h-4 text-[#ff9900]" /> Edit Record
-              </span>
-              <button onClick={() => setEditingCard(null)} className="text-gray-400 hover:text-white transition-colors">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="flex border-b border-gray-200">
-              {(["front", "back"] as const).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setEditTab(tab)}
-                  className={`flex-1 py-3 text-xs font-black uppercase tracking-widest transition-colors ${editTab === tab ? "bg-[#ff9900] text-[#232f3e]" : "bg-gray-50 text-gray-500 hover:bg-gray-100"}`}
-                >
-                  {tab} Side
-                </button>
-              ))}
-            </div>
-
-            <div className="overflow-y-auto flex-1 px-6 py-5 space-y-4">
-              {(["front", "back"] as const).map((side) =>
-                editTab === side ? (
-                  <div key={side} className="space-y-4">
-                    {[
-                      { label: "Name", key: "name", type: "input" },
-                      { label: "Title / Position", key: "title", type: "input" },
-                      { label: "Company", key: "company", type: "input" },
-                      { label: "Website", key: "website", type: "input" },
-                      { label: "Address", key: "address", type: "input" },
-                    ].map(({ label, key, type }) => (
-                      <div key={key}>
-                        <label className="block text-xs font-black uppercase tracking-wider text-gray-500 mb-1">{label}</label>
-                        {type === "input" ? (
-                          <input
-                            type="text"
-                            value={editForm[side][key]}
-                            onChange={(e) => setEditForm((f: any) => ({ ...f, [side]: { ...f[side], [key]: e.target.value } }))}
-                            className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-800 focus:ring-2 focus:ring-[#ff9900] outline-none"
-                          />
-                        ) : null}
-                      </div>
-                    ))}
-                    {[
-                      { label: "Phone Numbers (one per line)", key: "phone" },
-                      { label: "Email Addresses (one per line)", key: "email" },
-                      { label: "QR Code Links (one per line)", key: "qrData" },
-                    ].map(({ label, key }) => (
-                      <div key={key}>
-                        <label className="block text-xs font-black uppercase tracking-wider text-gray-500 mb-1">{label}</label>
-                        <textarea
-                          rows={3}
-                          value={editForm[side][key]}
-                          onChange={(e) => setEditForm((f: any) => ({ ...f, [side]: { ...f[side], [key]: e.target.value } }))}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-800 focus:ring-2 focus:ring-[#ff9900] outline-none resize-none"
-                          placeholder={`One entry per line`}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                ) : null
-              )}
-
-              <div>
-                <label className="block text-xs font-black uppercase tracking-wider text-gray-500 mb-1">Category</label>
-                <input
-                  type="text"
-                  value={editForm.category}
-                  onChange={(e) => setEditForm((f: any) => ({ ...f, category: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-800 focus:ring-2 focus:ring-[#ff9900] outline-none"
-                  placeholder="e.g. Technology, Finance, Healthcare..."
-                />
-              </div>
-            </div>
-
-            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-xl space-y-3">
-              <div>
-                <label className="block text-xs font-black uppercase tracking-wider text-gray-500 mb-1 flex items-center gap-1">
-                  <Lock className="w-3 h-3" /> Confirm Password to Save
-                </label>
-                <input
-                  type="password"
-                  value={editPassword}
-                  onChange={(e) => { setEditPassword(e.target.value); setEditError(""); }}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-800 focus:ring-2 focus:ring-[#ff9900] outline-none"
-                  placeholder="Enter your vault access password"
-                />
-                {editError && <p className="text-red-500 text-xs font-bold mt-1">{editError}</p>}
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setEditingCard(null)}
-                  className="flex-1 py-2.5 border border-gray-300 rounded-lg text-sm font-bold text-gray-600 hover:bg-gray-100 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleEditSave}
-                  disabled={editSaving}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#232f3e] hover:bg-[#ff9900] text-white hover:text-[#232f3e] rounded-lg text-sm font-black uppercase tracking-widest transition-colors disabled:opacity-50"
-                >
-                  {editSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                  {editSaving ? "Saving..." : "Save Changes"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </main>
   );
 }

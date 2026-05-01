@@ -10,6 +10,9 @@ export default function ScanPage() {
   const [isProcessingUpload, setIsProcessingUpload] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
+  // Category state to manage selected category
+  const [selectedCategory, setSelectedCategory] = useState("Uncategorized");
+
   useEffect(() => {
     fetch("/api/cards")
       .then((res) => {
@@ -31,7 +34,13 @@ export default function ScanPage() {
       const response = await fetch("/api/process-card", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ frontImageUrl, backImageUrl, frontQrCodes, backQrCodes }),
+        body: JSON.stringify({ 
+          frontImageUrl, 
+          backImageUrl, 
+          frontQrCodes, 
+          backQrCodes,
+          category: selectedCategory,  // Send the selected category
+        }),
       });
 
       if (response.ok) {
@@ -78,6 +87,42 @@ export default function ScanPage() {
       <div className="max-w-2xl mx-auto px-6 py-12 space-y-8">
         <div className="bg-white p-8 rounded-xl shadow-lg border-t-4 border-[#ff9900]">
           <h2 className="text-xl font-black text-[#232f3e] uppercase tracking-widest mb-6 text-center">Data Entry Node</h2>
+
+          {/* Category Selection */}
+          <div className="mb-6">
+            <label className="block text-sm font-bold text-gray-700 mb-2">Select Category</label>
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#ff9900] outline-none"
+            >
+              <option value="Uncategorized">Uncategorized</option>
+              <option value="Electronics">Electronics</option>
+              <option value="Clothing, Shoes & Jewelry">Clothing, Shoes & Jewelry</option>
+              <option value="Home & Kitchen">Home & Kitchen</option>
+              <option value="Beauty & Personal Care">Beauty & Personal Care</option>
+              <option value="Health & Household">Health & Household</option>
+              <option value="Toys & Games">Toys & Games</option>
+              <option value="Sports & Outdoors">Sports & Outdoors</option>
+              <option value="Automotive">Automotive</option>
+              <option value="Baby">Baby</option>
+              <option value="Pet Supplies">Pet Supplies</option>
+              <option value="Grocery & Gourmet Food">Grocery & Gourmet Food</option>
+              <option value="Office Products">Office Products</option>
+              <option value="Industrial & Scientific">Industrial & Scientific</option>
+              <option value="Tools & Home Improvement">Tools & Home Improvement</option>
+              <option value="Garden & Outdoor">Garden & Outdoor</option>
+              <option value="Arts, Crafts & Sewing">Arts, Crafts & Sewing</option>
+              <option value="Cell Phones & Accessories">Cell Phones & Accessories</option>
+              <option value="Computers & Accessories">Computers & Accessories</option>
+              <option value="Video Games">Video Games</option>
+              <option value="Musical Instruments">Musical Instruments</option>
+              <option value="Movies & TV">Movies & TV</option>
+              <option value="Software">Software</option>
+              <option value="Handmade">Handmade</option>
+              <option value="Amazon Devices & Accessories">Amazon Devices & Accessories</option>
+            </select>
+          </div>
 
           <CardUploader onUploadSuccess={handleCloudinarySuccess} />
 
