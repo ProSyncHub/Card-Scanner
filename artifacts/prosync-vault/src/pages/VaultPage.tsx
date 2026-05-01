@@ -294,7 +294,7 @@ export default function VaultPage() {
     return (
       <div className="flex flex-col h-full">
         {(data.name || data.title || data.company) && (
-          <div className="mb-3 pb-3 border-b border-gray-200 shrink-0 pr-8">
+          <div className="mb-3 pb-3 border-b border-gray-200 shrink-0">
             {data.name && <h2 className="text-xl font-black text-[#232f3e] leading-tight truncate">{data.name}</h2>}
             {data.title && <p className="text-sm font-bold text-[#ff9900] truncate">{data.title}</p>}
             {data.company && <p className="text-xs font-bold text-gray-500 truncate">{data.company}</p>}
@@ -458,64 +458,72 @@ export default function VaultPage() {
                 return (
                   <div
                     key={card._id}
-                    className={`relative w-full h-[330px] cursor-pointer group ${isSelected ? "ring-2 ring-[#ff9900] ring-offset-2 rounded-xl" : ""}`}
-                    style={{ perspective: "1000px" }}
-                    onClick={() => toggleFlip(card._id)}
+                    className={`flex flex-col w-full rounded-xl shadow-sm hover:shadow-xl transition-shadow group ${isSelected ? "ring-2 ring-[#ff9900] ring-offset-2" : ""}`}
                   >
-                    {/* Checkbox overlay */}
-                    <button
-                      onClick={(e) => toggleSelectCard(card._id, e)}
-                      className="absolute top-3 left-3 z-30 p-1 rounded-md bg-white/90 hover:bg-white shadow-sm transition-all"
-                      title={isSelected ? "Deselect" : "Select"}
-                    >
-                      {isSelected
-                        ? <CheckSquare className="w-4 h-4 text-[#ff9900]" />
-                        : <Square className="w-4 h-4 text-gray-400" />
-                      }
-                    </button>
-
-                    <div
-                      className="relative w-full h-full transition-transform duration-500 shadow-sm hover:shadow-xl rounded-xl"
-                      style={{ transformStyle: "preserve-3d", transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)" }}
-                    >
-                      {/* FRONT */}
-                      <div className="absolute w-full h-full bg-white border border-gray-200 rounded-xl p-5 flex flex-col" style={{ backfaceVisibility: "hidden" }}>
-                        <div className="absolute top-4 right-4 text-[10px] font-black text-gray-300 uppercase tracking-widest flex items-center gap-1 z-10 bg-white px-1">
-                          Front <Repeat className="w-3 h-3 group-hover:text-[#ff9900] transition-colors" />
-                        </div>
-                        <div className={`absolute top-10 right-3 z-20 flex flex-col gap-1 ${isFlipped ? "pointer-events-none opacity-0" : "opacity-100"}`}>
-                          <button
-                            onClick={(e) => openEditModal(card, e)}
-                            className="p-2 bg-white hover:bg-blue-50 text-gray-300 hover:text-blue-500 rounded-lg transition-all border border-transparent hover:border-blue-200"
-                            title="Edit Record"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={(e) => openDeleteModal([card._id], e)}
-                            className="p-2 bg-white hover:bg-red-50 text-gray-300 hover:text-red-500 rounded-lg transition-all border border-transparent hover:border-red-200"
-                            title="Delete Record"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                        {card.isTranslated && card.originalLanguage && (
-                          <div className="absolute bottom-3 left-3 z-10 flex items-center gap-1 bg-[#232f3e] text-[#ff9900] px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest">
-                            <Languages className="w-2.5 h-2.5" /> Translated from {card.originalLanguage}
-                          </div>
-                        )}
-                        {renderSideData(card.front)}
-                      </div>
-
-                      {/* BACK */}
-                      <div
-                        className="absolute w-full h-full bg-[#f8f9fa] border border-gray-200 rounded-xl p-5 flex flex-col"
-                        style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
+                    {/* ── Mini card navbar ── */}
+                    <div className="flex items-center justify-between bg-gray-50 border border-gray-200 border-b-0 rounded-t-xl px-3 py-1.5">
+                      {/* Left: select checkbox */}
+                      <button
+                        onClick={(e) => toggleSelectCard(card._id, e)}
+                        className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-[#232f3e] transition-colors"
+                        title={isSelected ? "Deselect" : "Select"}
                       >
-                        <div className="absolute top-4 right-4 text-[10px] font-black text-gray-300 uppercase tracking-widest flex items-center gap-1 z-10 bg-[#f8f9fa] px-1">
-                          Back <Repeat className="w-3 h-3 group-hover:text-[#ff9900] transition-colors" />
+                        {isSelected
+                          ? <CheckSquare className="w-3.5 h-3.5 text-[#ff9900]" />
+                          : <Square className="w-3.5 h-3.5" />
+                        }
+                        <span>{isSelected ? "Selected" : "Select"}</span>
+                      </button>
+
+                      {/* Right: flip label + edit + delete */}
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest flex items-center gap-0.5 mr-1">
+                          {isFlipped ? "Back" : "Front"} <Repeat className="w-2.5 h-2.5 group-hover:text-[#ff9900] transition-colors" />
+                        </span>
+                        <button
+                          onClick={(e) => openEditModal(card, e)}
+                          className="p-1.5 rounded hover:bg-blue-50 text-gray-300 hover:text-blue-500 transition-colors"
+                          title="Edit Record"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={(e) => openDeleteModal([card._id], e)}
+                          className="p-1.5 rounded hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors"
+                          title="Delete Record"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* ── Flipping card body ── */}
+                    <div
+                      className="relative w-full h-[300px] cursor-pointer"
+                      style={{ perspective: "1000px" }}
+                      onClick={() => toggleFlip(card._id)}
+                    >
+                      <div
+                        className="relative w-full h-full transition-transform duration-500"
+                        style={{ transformStyle: "preserve-3d", transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)" }}
+                      >
+                        {/* FRONT */}
+                        <div className="absolute w-full h-full bg-white border border-gray-200 border-t-0 rounded-b-xl p-5 flex flex-col" style={{ backfaceVisibility: "hidden" }}>
+                          {card.isTranslated && card.originalLanguage && (
+                            <div className="absolute bottom-3 left-3 z-10 flex items-center gap-1 bg-[#232f3e] text-[#ff9900] px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest">
+                              <Languages className="w-2.5 h-2.5" /> Translated from {card.originalLanguage}
+                            </div>
+                          )}
+                          {renderSideData(card.front)}
                         </div>
-                        {renderSideData(card.back)}
+
+                        {/* BACK */}
+                        <div
+                          className="absolute w-full h-full bg-[#f8f9fa] border border-gray-200 border-t-0 rounded-b-xl p-5 flex flex-col"
+                          style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
+                        >
+                          {renderSideData(card.back)}
+                        </div>
                       </div>
                     </div>
                   </div>
